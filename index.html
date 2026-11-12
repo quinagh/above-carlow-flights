@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Above Carlow – Drone Flights</title>
+<style>
+  :root{--bg:#f6f7f4;--card:#fff;--text:#1d2420;--muted:#66706a;--accent:#2f6b4f;--line:#e1e5df}
+  @media (prefers-color-scheme:dark){:root{--bg:#141a17;--card:#1d2521;--text:#e8ede9;--muted:#9aa59e;--accent:#6fcf9f;--line:#2b3631}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,sans-serif}
+  header{padding:32px 16px 8px;max-width:1000px;margin:auto}
+  h1{margin:0 0 4px;font-size:1.8rem}
+  header p{margin:0;color:var(--muted)}
+  .bar{max-width:1000px;margin:12px auto;padding:0 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  input[type=search]{flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit}
+  button{padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text);font:inherit;cursor:pointer}
+  button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .progress{max-width:1000px;margin:0 auto;padding:0 16px;color:var(--muted);font-size:.9rem}
+  main{max-width:1000px;margin:16px auto 48px;padding:0 16px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+  section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  h2{margin:0 0 8px;font-size:1.1rem;color:var(--accent)}
+  ul{list-style:none;margin:0;padding:0}
+  li{padding:3px 0}
+  label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+  input[type=checkbox]{margin-top:5px;accent-color:var(--accent)}
+  li.done span{text-decoration:line-through;color:var(--muted)}
+  .note{color:var(--muted);font-size:.9rem;margin:6px 0 0}
+  a{color:var(--accent)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Above Carlow</h1>
+  <p>Potential drone flights – tick them off as they're done.</p>
+</header>
+<div class="bar">
+  <input type="search" id="q" placeholder="Search locations or shots…" aria-label="Search">
+  <button id="todo" aria-pressed="false">Hide completed</button>
+</div>
+<div class="progress" id="progress"></div>
+<main id="list"></main>
+
+<script>
+const flights = [
+  {name:"Saplings", items:["Construction progress","Model + specific shots/video"]},
+  {name:"Green Road", items:["Workhouse graveyard – Orthophoto","Workhouse graveyard – Model","FCA building","College panorama","Top down night view of pitches"]},
+  {name:"Pennys Park", items:["Orthophoto when closed?","Video on Sunday morning?"]},
+  {name:"Skate park", items:["Top down / orbit / eye level?"], note:"Go at a quiet time."},
+  {name:"Linear park", items:["Video / Orthophoto","Flight to N80"]},
+  {name:"Eire Óg Road", items:["Orthophoto","Bridge","Weir","Railway passage","Road to Ballinacarrig"]},
+  {name:"Culm crusher", items:["Video/Photos"]},
+  {name:"Burren River", items:["Video from N80 to Relief Road"]},
+  {name:"Ballinacarrig Cemetery", items:["Video/Photos"]},
+  {name:"Railway Bridge", items:["Location: Dump Road or Milford / Old Bagenstown Road","Top down video of train passing under bridge"], note:"Slo-mo or hyperlapse?"},
+  {name:"Rossmore", items:["Grotto","Quarry?","Woods","Bilboa – Wind turbines"]},
+  {name:"Killeshin", items:["Church","Reservoir / weir",'Mass Rock <a href="https://maps.app.goo.gl/Ltg1qR1yFW1Gf4Dn8?g_st=ic" target="_blank" rel="noopener">(map)</a>']},
+  {name:"Milford area", items:["Milford weir","Mill","Bridge over river","Bridge over canal","Canal foot bridge","Canal locks"]},
+  {name:"Haroldstown", items:["Dolmen","Graveyard","Acaun Graveyard"]},
+  {name:"Duckets Grove", items:["House/Gardens","Gatehouse","Longmile avenue","Burton hall"]},
+  {name:"Oak Park", items:["Arch","Woods","Lake"]},
+  {name:"Athy Road", items:["Sugar factory tower","Barrow track","Old graves","Park","Bridge/weir"]},
+  {name:"St Mary's Church", items:["Roof €"]}
+];
+
+const KEY="above-carlow-done";
+let done={};
+try{done=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(done))}catch(e){}};
+
+const list=document.getElementById("list");
+flights.forEach((f,i)=>{
+  const s=document.createElement("section");
+  s.innerHTML=`<h2>${f.name}</h2><ul>`+f.items.map((t,j)=>{
+    const id=i+"-"+j;
+    return `<li data-id="${id}" class="${done[id]?"done":""}"><label><input type="checkbox" ${done[id]?"checked":""}><span>${t}</span></label></li>`;
+  }).join("")+`</ul>`+(f.note?`<p class="note">${f.note}</p>`:"");
+  s.dataset.text=(f.name+" "+f.items.join(" ")+" "+(f.note||"")).toLowerCase();
+  list.appendChild(s);
+});
+
+const q=document.getElementById("q"), todo=document.getElementById("todo");
+function refresh(){
+  const total=document.querySelectorAll("li").length;
+  const n=Object.values(done).filter(Boolean).length;
+  document.getElementById("progress").textContent=`${n} of ${total} shots completed`;
+  const term=q.value.trim().toLowerCase(), hide=todo.getAttribute("aria-pressed")==="true";
+  document.querySelectorAll("section").forEach(s=>{
+    let visible=0;
+    s.querySelectorAll("li").forEach(li=>{
+      const hideIt=hide&&done[li.dataset.id];
+      li.classList.toggle("hidden",!!hideIt);
+      if(!hideIt)visible++;
+    });
+    s.classList.toggle("hidden",(term&&!s.dataset.text.includes(term))||visible===0);
+  });
+}
+list.addEventListener("change",e=>{
+  const li=e.target.closest("li");
+  done[li.dataset.id]=e.target.checked;
+  li.classList.toggle("done",e.target.checked);
+  save();refresh();
+});
+q.addEventListener("input",refresh);
+todo.addEventListener("click",()=>{
+  todo.setAttribute("aria-pressed",todo.getAttribute("aria-pressed")!=="true");refresh();
+});
+refresh();
+</script>
+</body>
+</html>
